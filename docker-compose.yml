@@ -1,0 +1,54 @@
+version: "2"
+services:
+  webapi:
+    build:
+      context: ./
+      dockerfile: ./docker/api/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - kafka
+
+  kafkaclient:
+    build:
+      context: ./
+      dockerfile: ./docker/kafkaclient/Dockerfile
+    depends_on:
+      - postgres
+      - kafka
+
+  testclient:
+    build:
+      context: ./
+      dockerfile: ./docker/testclient/Dockerfile
+    depends_on:
+      - kafkaclient
+      - webapi
+        
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    hostname: zookeeper
+    restart: unless-stopped
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    hostname: kafka
+    restart: unless-stopped
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+
+  postgres:
+    image: 'postgres:10.1'
+    ports:
+      - "5442:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=postgres
